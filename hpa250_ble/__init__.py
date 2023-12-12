@@ -9,6 +9,10 @@ import logging
 from bleak import BleakClient
 from bleak.uuids import normalize_uuid_16, uuid16_dict, uuidstr_to_str
 
+from .reconcile import reconcile
+from .state import State
+from .command import Command
+from .enums import Preset, Backlight, VOCLight
 
 logging.basicConfig(level=logging.INFO)
 
@@ -134,7 +138,7 @@ async def main(address: str):
             struct.pack(
                 "3B17x",
                 PREAMBLE,
-                0,
+                SPEED_GERM,
                 0,
             )
         )
@@ -221,10 +225,6 @@ async def main(address: str):
 # - 00 - 0h
 # - ..
 # - 12 - 18h
-
-
-class State:
-    pass
 
 
 def mac_addr_str_to_bytes(mac_addr_str: str) -> bytes:
