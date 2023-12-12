@@ -13,7 +13,15 @@ _LOGGER = logging.getLogger(__name__)
 # byte 3: <6-bit voc light spec> <2 bit backlight spec>
 # byte 4: <pad byte>
 # byte 5: <1 byte timer spec>
-_STATE_STRUCT_FORMAT = "xBBxB14x"
+_STATE_STRUCT_FORMAT = ">cI14x"
+
+IS_ON = 1 << 24
+IS_VOC_SET = 1 << 25
+IS_POLLEN_SET = 1 << 26
+IS_GERM = 1 << 27
+IS_GENERAL = 1 << 28
+IS_ALLERGEN = 1 << 29
+IS_TURBO = 1 << 30
 
 
 @dataclass(frozen=True)
@@ -30,36 +38,40 @@ class State:
 
     @classmethod
     def from_bytes(cls, data: bytes) -> "State":
-        _LOGGER.debug(f"constructing state from bytes: binascii.hexlify(data)")
-        fan, lights, timer = struct.unpack(_STATE_STRUCT_FORMAT, data)
+        _LOGGER.debug(
+            f"constructing state from {len(data)} bytes: binascii.hexlify(data)"
+        )
+        _, state = struct.unpack(_STATE_STRUCT_FORMAT, data)
 
-        if fan == const.STATE_OFF:
+        voc_light_num = (state >> 16) & 0b11111100  # next 6 bits
+        backlight_num = (state >> 16) & 0b00000011  # next 2 bits
+        timer = state & 0xFF  # last 8 bits
+
+        if not state & IS_ON:
             return cls.empty()
 
         if timer == 0:
             timer = None
 
-        backlight = Backlight.from_byte(lights)
+        backlight = Backlight.from_int(backlight_num)
         voc_light: Optional[VOCLight] = None
 
-        assert fan & const.STATE_ON
-
-        if fan & const.STATE_VOC_SET and fan & const.STATE_POLLEN_SET:
+        if state & IS_VOC_SET and state & IS_POLLEN_SET:
             preset = Preset.AUTO_VOC_POLLEN
-            voc_light = VOCLight.from_byte(lights)
-        elif fan & const.STATE_VOC_SET:
+            voc_light = VOCLight.from_int(voc_light_num)
+        elif state & IS_VOC_SET:
             preset = Preset.AUTO_VOC
-            voc_light = VOCLight.from_byte(lights)
-        elif fan & const.STATE_POLLEN_SET:
+            voc_light = VOCLight.from_int(voc_light_num)
+        elif state & IS_POLLEN_SET:
             preset = Preset.AUTO_POLLEN
-            voc_light = VOCLight.from_byte(lights)
-        elif fan & const.STATE_GERM:
+            voc_light = VOCLight.from_int(voc_light_num)
+        elif state & IS_GERM:
             preset = Preset.GERM
-        elif fan & const.STATE_GENERAL:
+        elif state & IS_GENERAL:
             preset = Preset.GENERAL
-        elif fan & const.STATE_ALLERGEN:
+        elif state & IS_ALLERGEN:
             preset = Preset.ALLERGEN
-        elif fan & const.STATE_TURBO:
+        elif state & IS_TURBO:
             preset = Preset.TURBO
         else:
             raise exc.StateError("Could not determine current preset", data)
