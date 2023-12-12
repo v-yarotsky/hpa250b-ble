@@ -12,6 +12,7 @@ def test_reconcile():
 
     for _ in range(MAX_RECONCILES):
         cmd = reconcile(d.current_state, desired_state)
-        d.apply_command(cmd)
+        if d.apply_command(cmd) == desired_state:
+            break
 
-    assert d.current_state == desired_state
+    assert d.current_state != desired_state

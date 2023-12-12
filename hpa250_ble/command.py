@@ -116,3 +116,19 @@ class Command:
             return False
         __value = cast(Command, __value)
         return self.command == __value.command
+
+    def __repr__(self) -> str:
+        return (
+            f"<Command: "
+            + f"pwr: {self.is_toggle_power}, "
+            + f"grm: {self.is_toggle_germ}, "
+            + f"grl: {self.is_toggle_general}, "
+            + f"alg: {self.is_toggle_allergen}, "
+            + f"tur: {self.is_toggle_turbo}, "
+            + f"voc: {self.is_toggle_auto_voc}, "
+            + f"pol: {self.is_toggle_auto_pollen}, "
+            + f"lgt: {self.is_cycle_light}, "
+            + f"tup: {self.is_timer_up}, "
+            + f"tdn: {self.is_timer_down}"
+            + ">"
+        )

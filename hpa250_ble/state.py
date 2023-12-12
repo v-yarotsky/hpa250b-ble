@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import logging
 import struct
 from typing import cast, Optional
-from . import const, exc
+from . import exc
 from .enums import Preset, Backlight, VOCLight
 
 _LOGGER = logging.getLogger(__name__)
