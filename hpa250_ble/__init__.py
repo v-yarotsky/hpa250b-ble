@@ -69,17 +69,18 @@ async def main(address: str):
         IS_ALLERGEN = 1 << 5
         IS_TURBO = 1 << 6
 
-        LIGHT_FULL = 0
-        LIGHT_DIM = 1
-        LIGHT_OFF = 2
+        # byte 2
+        BACKLIGHT_FULL = 0
+        BACKLIGHT_DIM = 1
+        BACKLIGHT_OFF = 2
 
-        AUTO_SPEED_GERM = 0
-        AUTO_SPEED_GENERAL = 1
-        AUTO_SPEED_ALLERGEN = 2
+        VOC_LIGHT_GREEN = 0
+        VOC_LIGHT_AMBER = 1
+        VOC_LIGHT_RED = 2
 
         def on_notify(ch, dt):
             logging.info(f"got characteristic: {ch}, data: {binascii.hexlify(dt)}")
-            speed, light_and_auto_speed, timer = struct.unpack("xBBxB14x", dt)
+            speed, lights, timer = struct.unpack("xBBxB14x", dt)
             logging.info(f"Off: {bool(speed & IS_OFF)}")
             logging.info(f"On: {bool(speed & IS_ON)}")
             logging.info(f"VOC: {bool(speed & IS_VOC_SET)}")
@@ -89,26 +90,15 @@ async def main(address: str):
             logging.info(f"Allergen: {bool(speed & IS_ALLERGEN)}")
             logging.info(f"Turbo: {bool(speed & IS_TURBO)}")
 
-            auto_speed = light_and_auto_speed >> 2  # first 6 bits
-            light = light_and_auto_speed & 0b11  # last 2 bits
-            # 00000000 - light full, speed auto, germ
-            # 00000001 - light dim, speed auto, germ
-            # 00000010 - light off, speed auto, germ
-            # 00000100 - light full, speed auto, general
-            # 00000101 - light dim, speed auto, general
-            # 00000110 - light off, speed auto, general
-            # 00001000 - light full, speed auto, allergen
-            # 00001001 - light dim, speed auto, allergen
-            # 00001010 - light off, speed auto, allergen
-            logging.info(
-                f"Light byte: {format(light_and_auto_speed, 'b').rjust(8, '0')}"
-            )
-            logging.info(f"Auto speed germ: {auto_speed == AUTO_SPEED_GERM}")
-            logging.info(f"Auto speed general: {auto_speed == AUTO_SPEED_GENERAL}")
-            logging.info(f"Auto speed allergen: {auto_speed == AUTO_SPEED_ALLERGEN}")
-            logging.info(f"Light full: {light == LIGHT_FULL}")
-            logging.info(f"Light dim: {light == LIGHT_DIM}")
-            logging.info(f"Light off: {light == LIGHT_OFF}")
+            voc_light = lights >> 2  # first 6 bits
+            backlight = lights & 0b11  # last 2 bits
+            logging.info(f"Light byte: {format(lights, 'b').rjust(8, '0')}")
+            logging.info(f"VOC green: {voc_light == VOC_LIGHT_GREEN}")
+            logging.info(f"VOC amber: {voc_light == VOC_LIGHT_AMBER}")
+            logging.info(f"VOC red: {voc_light == VOC_LIGHT_RED}")
+            logging.info(f"Backlight full: {backlight == BACKLIGHT_FULL}")
+            logging.info(f"Backlight dim: {backlight == BACKLIGHT_DIM}")
+            logging.info(f"Backlight off: {backlight == BACKLIGHT_OFF}")
 
             logging.info(f"Timer: {timer}")
 
