@@ -5,7 +5,7 @@ alias t := test
 
 # run tests
 test:
-  poetry run pytest -vv
+  poetry run pytest -vv --cov=hpa250_ble
 
 # run test app
 run:
