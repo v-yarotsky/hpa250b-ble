@@ -4,8 +4,8 @@ default:
 alias t := test
 
 # run tests
-test:
-  poetry run pytest -vv --cov=hpa250_ble
+test PATTERN="*":
+  poetry run pytest -vv --cov=hpa250_ble -k {{PATTERN}}
 
 # run test app
 run:

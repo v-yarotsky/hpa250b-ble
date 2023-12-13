@@ -20,6 +20,9 @@ class BTClient(Protocol):
     def is_connected(self) -> bool:
         ...
 
+    async def connect(self):
+        ...
+
     async def disconnect(self):
         ...
 
@@ -41,6 +44,9 @@ class BleakBTClient(BTClient):
     def is_connected(self) -> bool:
         return self._client.is_connected
 
+    async def connect(self):
+        await self._client.connect()
+
     async def disconnect(self):
         await self._client.disconnect()
 
@@ -58,8 +64,11 @@ class DisconnectedBTClient(BTClient):
     def is_connected(self) -> bool:
         return False
 
-    def disconnect(self) -> bool:
-        return True
+    def connect(self):
+        pass
+
+    def disconnect(self):
+        pass
 
     def read_gatt_char(self, *_) -> bytes:
         raise BTClientDisconnectedError("can't read GATT characteristic: not connected")
@@ -103,6 +112,7 @@ class BleakHPA250B(HPA250B):
 
         _LOGGER.info("connecting")
         self._client = client_factory(self._device, self.disconnect)
+        await self._client.connect()
 
         system_id = await self._client.read_gatt_char(SYSTEM_ID_UUID)
         _LOGGER.debug(f"system id: {binascii.hexlify(system_id)}")
@@ -113,11 +123,16 @@ class BleakHPA250B(HPA250B):
         _LOGGER.debug(f"MAC: {binascii.hexlify(mac_bytes)}")
         _LOGGER.debug("sending handshake")
 
+        self.update_received.clear()
+
         await self._client.start_notify(STATE_UUID, callback=self._handle_update)
 
         await self._client.write_gatt_char(
             COMMAND_UUID,
             b"MAC+" + mac_bytes,
+        )
+        await asyncio.wait_for(
+            self.update_received.wait(), timeout=UPDATE_TIMEOUT_SECONDS
         )
 
         self._is_connected = True
@@ -138,6 +153,7 @@ class BleakHPA250B(HPA250B):
 
     async def apply_command(self, cmd: Command):
         _LOGGER.info(f"sending command {cmd}")
+        self.update_received.clear()
         await self._client.write_gatt_char(COMMAND_UUID, cmd.bytes)
         await asyncio.wait_for(
             self.update_received.wait(), timeout=UPDATE_TIMEOUT_SECONDS

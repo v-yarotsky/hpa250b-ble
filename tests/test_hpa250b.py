@@ -12,13 +12,16 @@ from hpa250_ble.enums import Preset, Backlight
 
 class FakeBTClient(BTClient):
     def __init__(self):
-        self._is_connected = True
+        self._is_connected = False
         self.notify_callbacks: dict[str, Callable[[bytes], None]] = {}
         self.commands: list[bytes] = []
 
     @property
     def is_connected(self) -> bool:
         return self._is_connected
+
+    async def connect(self):
+        self._is_connected = True
 
     async def disconnect(self):
         self._is_connected = False
@@ -36,6 +39,7 @@ class FakeBTClient(BTClient):
 
     async def start_notify(self, uuid: str, callback: Callable[[bytes], None]):
         self.notify_callbacks[uuid] = callback
+        callback(State.empty().bytes)
 
     def notify(self, uuid: str, data: bytes):
         self.notify_callbacks[uuid](data)
