@@ -10,7 +10,11 @@ class VirtualHPA250B(HPA250B):
     def __init__(self):
         self._state = State.empty()
 
-    def apply_command(self, cmd: Command):
+    @property
+    def name(self) -> str:
+        return "VirtualHPA250B"
+
+    async def apply_command(self, cmd: Command):
         is_on = self._state.is_on
         preset = self._state.preset
         backlight = self._state.backlight

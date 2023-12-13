@@ -10,3 +10,7 @@ class HPA250B(Protocol):
     @property
     def current_state(self) -> State:
         ...
+
+    @property
+    def name(self) -> str:
+        ...

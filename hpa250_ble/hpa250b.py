@@ -1,3 +1,4 @@
+import asyncio
 import binascii
 from bleak.backends.device import BLEDevice
 from bleak import BleakClient
@@ -11,6 +12,7 @@ from .const import SYSTEM_ID_UUID, COMMAND_UUID, STATE_UUID
 from .exc import BTClientDisconnectedError
 
 _LOGGER = logging.getLogger(__name__)
+UPDATE_TIMEOUT_SECONDS = 2
 
 
 class BTClient(Protocol):
@@ -80,6 +82,8 @@ class BleakHPA250B(HPA250B):
         self._client: BTClient = DisconnectedBTClient()
         self._is_connected = False
 
+        self.update_received = asyncio.Event()
+
     @property
     def is_connected(self):
         return self._is_connected
@@ -135,7 +139,11 @@ class BleakHPA250B(HPA250B):
     async def apply_command(self, cmd: Command):
         _LOGGER.info(f"sending command {cmd}")
         await self._client.write_gatt_char(COMMAND_UUID, cmd.bytes)
+        await asyncio.wait_for(
+            self.update_received.wait(), timeout=UPDATE_TIMEOUT_SECONDS
+        )
 
     def _handle_update(self, data: bytes):
         old_state, self._state = self._state, State.from_bytes(data)
         _LOGGER.info(f"updated state {old_state} -> {self._state}")
+        self.update_received.set()

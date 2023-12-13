@@ -76,7 +76,12 @@ class TestBleakHPA250B:
         await d.connect(lambda *_: c)
 
         cmd = Command().toggle_power()
-        await d.apply_command(cmd)
+        fut = d.apply_command(cmd)
+        c.notify(
+            STATE_UUID, State(True, Preset.GENERAL, Backlight.ON, None, None).bytes
+        )
+        await fut
+
         assert cmd.bytes in c.commands
 
     @pytest.mark.asyncio
