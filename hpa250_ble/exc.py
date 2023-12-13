@@ -9,3 +9,12 @@ class StateError(Exception):
     def __str__(self):
         message = super().__str__()
         return f'{message} (data: "{binascii.hexlify(self.state_bytes)}")'
+
+
+class BTError(Exception):
+    def __init__(self, message: str):
+        return super().__init__(self, message)
+
+
+class BTClientDisconnectedError(BTError):
+    pass

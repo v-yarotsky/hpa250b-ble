@@ -2,6 +2,8 @@ from dataclasses import dataclass
 import logging
 import struct
 from typing import cast, Optional
+
+from hpa250_ble.const import PREAMBLE
 from . import exc
 from .enums import Preset, Backlight, VOCLight
 
@@ -13,15 +15,9 @@ _LOGGER = logging.getLogger(__name__)
 # byte 3: <6-bit voc light spec> <2 bit backlight spec>
 # byte 4: <pad byte>
 # byte 5: <1 byte timer spec>
-_STATE_STRUCT_FORMAT = ">cI14x"
+_STATE_STRUCT_FORMAT = ">BI14x"
 
 IS_ON = 1 << 24
-IS_VOC_SET = 1 << 25
-IS_POLLEN_SET = 1 << 26
-IS_GERM = 1 << 27
-IS_GENERAL = 1 << 28
-IS_ALLERGEN = 1 << 29
-IS_TURBO = 1 << 30
 
 
 @dataclass(frozen=True)
@@ -43,48 +39,130 @@ class State:
         )
         _, state = struct.unpack(_STATE_STRUCT_FORMAT, data)
 
-        voc_light_num = (state >> 16) & 0b11111100  # next 6 bits
-        backlight_num = (state >> 16) & 0b00000011  # next 2 bits
-        timer = state & 0xFF  # last 8 bits
+        is_on = _is_on_from_int(state)
 
-        if not state & IS_ON:
-            return cls.empty()
+        if not is_on:
+            return State.empty()
 
-        if timer == 0:
-            timer = None
+        preset = _preset_from_int(state)
+        if preset is None:
+            raise ValueError("Could not determine preset from integer state", data)
 
-        backlight = Backlight.from_int(backlight_num)
         voc_light: Optional[VOCLight] = None
+        if preset in [Preset.AUTO_VOC_POLLEN, Preset.AUTO_VOC, Preset.AUTO_POLLEN]:
+            voc_light = _voc_light_from_int(state)
 
-        if state & IS_VOC_SET and state & IS_POLLEN_SET:
-            preset = Preset.AUTO_VOC_POLLEN
-            voc_light = VOCLight.from_int(voc_light_num)
-        elif state & IS_VOC_SET:
-            preset = Preset.AUTO_VOC
-            voc_light = VOCLight.from_int(voc_light_num)
-        elif state & IS_POLLEN_SET:
-            preset = Preset.AUTO_POLLEN
-            voc_light = VOCLight.from_int(voc_light_num)
-        elif state & IS_GERM:
-            preset = Preset.GERM
-        elif state & IS_GENERAL:
-            preset = Preset.GENERAL
-        elif state & IS_ALLERGEN:
-            preset = Preset.ALLERGEN
-        elif state & IS_TURBO:
-            preset = Preset.TURBO
-        else:
-            raise exc.StateError("Could not determine current preset", data)
+        backlight = _backlight_from_int(state)
+        timer = _timer_from_int(state)
 
-        return State(True, preset, backlight, voc_light, timer)
+        return State(is_on, preset, backlight, voc_light, timer)
 
-    def __eq__(self, __value: object) -> bool:
-        if not isinstance(__value, State):
-            return False
-        v = cast(State, __value)
+    @property
+    def bytes(self) -> bytes:
+        data = 0
+        data |= _is_on_to_int(self.is_on)
+        data |= _preset_to_int(self.preset)
+        data |= _voc_light_to_int(self.voc_light)
+        data |= _backlight_to_int(self.backlight)
+        data |= _timer_to_int(self.timer)
+
+        return struct.pack(_STATE_STRUCT_FORMAT, PREAMBLE, data)
+
+    def matches_desired_state(self, desired: "State") -> bool:
         return (
-            self.is_on == v.is_on
-            and self.preset == v.preset
-            and self.backlight == v.backlight
-            and self.timer == v.timer
+            self.is_on == desired.is_on
+            and self.preset == desired.preset
+            and self.backlight == desired.backlight
+            and self.timer == desired.timer
         )
+
+
+def _is_on_from_int(n: int) -> bool:
+    return bool(n & _is_on_to_int(True))
+
+
+def _is_on_to_int(is_on: bool) -> int:
+    if not is_on:
+        return 0
+    return 1 << 24
+
+
+def _preset_from_int(n: int) -> Optional[Preset]:
+    if (n & (p := _preset_to_int(Preset.AUTO_VOC_POLLEN))) == p:
+        return Preset.AUTO_VOC_POLLEN
+    if (n & (p := _preset_to_int(Preset.AUTO_VOC))) == p:
+        return Preset.AUTO_VOC
+    if (n & (p := _preset_to_int(Preset.AUTO_POLLEN))) == p:
+        return Preset.AUTO_POLLEN
+    if (n & (p := _preset_to_int(Preset.GERM))) == p:
+        return Preset.GERM
+    if (n & (p := _preset_to_int(Preset.GENERAL))) == p:
+        return Preset.GENERAL
+    if (n & (p := _preset_to_int(Preset.ALLERGEN))) == p:
+        return Preset.ALLERGEN
+    if (n & (p := _preset_to_int(Preset.TURBO))) == p:
+        return Preset.TURBO
+    else:
+        return None
+
+
+def _preset_to_int(preset: Optional[Preset]) -> int:
+    return {
+        None: 0,
+        Preset.GERM: 1 << 27,
+        Preset.GENERAL: 1 << 28,
+        Preset.ALLERGEN: 1 << 29,
+        Preset.TURBO: 1 << 30,
+        Preset.AUTO_VOC: 1 << 25,
+        Preset.AUTO_POLLEN: 1 << 26,
+        Preset.AUTO_VOC_POLLEN: (1 << 25) | (1 << 26),
+    }[preset]
+
+
+def _voc_light_from_int(n: int) -> VOCLight:
+    n = (n >> 16) & 0b11111100
+    return {
+        0: VOCLight.GREEN,
+        4: VOCLight.AMBER,
+        8: VOCLight.RED,
+    }[n]
+
+
+def _voc_light_to_int(voc_light: Optional[VOCLight]) -> int:
+    return {
+        None: 0,
+        VOCLight.GREEN: 0 << 16,
+        VOCLight.AMBER: 4 << 16,
+        VOCLight.RED: 8 << 16,
+    }[voc_light]
+
+
+def _backlight_from_int(n: int) -> Backlight:
+    n = (n >> 16) & 0b00000011
+    return {
+        0: Backlight.ON,
+        1: Backlight.DIM,
+        2: Backlight.OFF,
+    }[n]
+
+
+def _backlight_to_int(backlight: Optional[Backlight]) -> int:
+    return {
+        None: 0,
+        Backlight.ON: 0 << 16,
+        Backlight.DIM: 1 << 16,
+        Backlight.OFF: 2 << 16,
+    }[backlight]
+
+
+def _timer_from_int(n: int) -> Optional[int]:
+    value = n & 0xFF
+    if value == 0:
+        return None
+    return value
+
+
+def _timer_to_int(timer: Optional[int]) -> int:
+    if timer is None:
+        return 0
+    return timer

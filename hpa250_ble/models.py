@@ -4,7 +4,7 @@ from .command import Command
 
 
 class HPA250B(Protocol):
-    async def apply_command(self, cmd: Command) -> State:
+    async def apply_command(self, cmd: Command):
         ...
 
     @property
