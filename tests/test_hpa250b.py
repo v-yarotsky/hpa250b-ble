@@ -1,3 +1,5 @@
+from hpa250_ble.command import Command
+from hpa250_ble.exc import BTClientDisconnectedError
 import pytest
 import binascii
 from bleak.backends.device import BLEDevice
@@ -40,13 +42,14 @@ class FakeBTClient(BTClient):
 
 
 class TestBleakHPA250B:
+    def setup_method(self):
+        self.ble_device = BLEDevice(
+            address="00:01:02:03:04:05", name="myhpa250b", details=None, rssi=90
+        )
+
     @pytest.mark.asyncio
     async def test_handshake(self):
-        d = BleakHPA250B(
-            BLEDevice(
-                address="00:01:02:03:04:05", name="myhpa250b", details=None, rssi=90
-            )
-        )
+        d = BleakHPA250B(self.ble_device)
         c = FakeBTClient()
 
         await d.connect(lambda *_: c)
@@ -54,13 +57,38 @@ class TestBleakHPA250B:
         assert c.commands == [b"MAC+" + binascii.unhexlify("0035FF091AC0")]
         assert d.is_connected
 
-        c.notify(
-            STATE_UUID,
-            State(
-                is_on=True,
-                preset=Preset.GENERAL,
-                backlight=Backlight.ON,
-                voc_light=None,
-                timer=None,
-            ).bytes,
+        state = State(
+            is_on=True,
+            preset=Preset.GENERAL,
+            backlight=Backlight.ON,
+            voc_light=None,
+            timer=None,
         )
+        c.notify(STATE_UUID, state.bytes)
+
+        assert d.current_state == state
+
+    @pytest.mark.asyncio
+    async def test_send_command(self):
+        d = BleakHPA250B(self.ble_device)
+        c = FakeBTClient()
+
+        await d.connect(lambda *_: c)
+
+        cmd = Command().toggle_power()
+        await d.apply_command(cmd)
+        assert cmd.bytes in c.commands
+
+    @pytest.mark.asyncio
+    async def test_raises_when_sending_on_disconnected_client(self):
+        d = BleakHPA250B(self.ble_device)
+
+        with pytest.raises(BTClientDisconnectedError):
+            await d.apply_command(Command().toggle_power())
+
+        c = FakeBTClient()
+        await d.connect(lambda *_: c)
+        await d.disconnect()
+
+        with pytest.raises(BTClientDisconnectedError):
+            await d.apply_command(Command().toggle_power())

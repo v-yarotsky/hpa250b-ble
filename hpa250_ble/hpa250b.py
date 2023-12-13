@@ -128,6 +128,7 @@ class BleakHPA250B(HPA250B):
         self._is_connected = False
         self._state = State.empty()
 
+    @property
     def current_state(self) -> State:
         return self._state
 
