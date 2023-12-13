@@ -11,23 +11,14 @@ class Preset(Enum):
     AUTO_POLLEN = "auto-pollen"
     AUTO_VOC_POLLEN = "auto-voc-and-pollen"
 
-    def toJSON(self):
-        return str(self)
-
 
 class Backlight(Enum):
     OFF = "off"
     DIM = "dim"
     ON = "on"
 
-    def toJSON(self):
-        return str(self)
-
 
 class VOCLight(Enum):
     GREEN = "green"
     AMBER = "amber"
     RED = "red"
-
-    def toJSON(self):
-        return str(self)

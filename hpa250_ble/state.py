@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 import logging
 import struct
-from typing import cast, Optional
+from typing import Optional
 
 from hpa250_ble.const import PREAMBLE
-from . import exc
 from .enums import Preset, Backlight, VOCLight
 
 _LOGGER = logging.getLogger(__name__)
@@ -16,8 +15,6 @@ _LOGGER = logging.getLogger(__name__)
 # byte 4: <pad byte>
 # byte 5: <1 byte timer spec>
 _STATE_STRUCT_FORMAT = ">BI14x"
-
-IS_ON = 1 << 24
 
 
 @dataclass(frozen=True)

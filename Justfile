@@ -9,4 +9,10 @@ test:
 
 # run test app
 run:
-  PYTHONPATH=$PYTHONPATH:$PWD python ./hpa250_ble
+  poetry run python ./hpa250_ble
+
+deadcode:
+  poetry run vulture \
+    --min-confidence 100 \
+    --ignore-names cls \
+    ./hpa250_ble

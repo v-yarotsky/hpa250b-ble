@@ -15,9 +15,6 @@ logging.basicConfig(level=logging.INFO)
 uuid16_lookup = {v: normalize_uuid_16(k) for k, v in uuid16_dict.items()}
 
 SYSTEM_ID_UUID = uuid16_lookup["System ID"]
-MODEL_NBR_UUID = uuid16_lookup["Model Number String"]
-DEVICE_NAME_UUID = uuid16_lookup["Device Name"]
-MANUFACTURER_NAME_UUID = uuid16_lookup["Manufacturer Name String"]
 PNP_ID_UUID = uuid16_lookup["PnP ID"]
 
 ADDRESS = (
@@ -76,11 +73,6 @@ async def main(address: str):
             time.sleep(2)
 
         await send_command(Command().bytes)
-
-
-def mac_addr_str_to_bytes(mac_addr_str: str) -> bytes:
-    """Converts MAC address string like 00:10:20:30:40:50 to bytes"""
-    return struct.pack("6B", *[int(b, 16) for b in mac_addr_str.split(":")])
 
 
 def extract_pnp_id_fields(pnp_id_bytes):
