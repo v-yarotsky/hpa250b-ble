@@ -15,4 +15,4 @@ def test_reconcile():
         if d.apply_command(cmd) == desired_state:
             break
 
-    assert d.current_state != desired_state
+    assert d.current_state == desired_state
