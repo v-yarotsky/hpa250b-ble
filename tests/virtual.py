@@ -1,7 +1,7 @@
-from hpa250_ble.models import HPA250B
-from hpa250_ble.command import Command
-from hpa250_ble.state import State
-from hpa250_ble.enums import Preset, Backlight, VOCLight
+from hpa250b_ble.models import HPA250B
+from hpa250b_ble.command import Command
+from hpa250b_ble.state import State
+from hpa250b_ble.enums import Preset, Backlight, VOCLight
 
 
 class VirtualHPA250B(HPA250B):

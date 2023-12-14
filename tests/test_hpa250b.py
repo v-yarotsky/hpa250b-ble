@@ -1,13 +1,13 @@
-from hpa250_ble.command import Command
-from hpa250_ble.exc import BTClientDisconnectedError
+from hpa250b_ble.command import Command
+from hpa250b_ble.exc import BTClientDisconnectedError
 import pytest
 import binascii
 from bleak.backends.device import BLEDevice
 from typing import Callable, Optional
-from hpa250_ble.hpa250b import BTClient, BleakHPA250B
-from hpa250_ble.const import SYSTEM_ID_UUID, COMMAND_UUID, STATE_UUID
-from hpa250_ble.state import State
-from hpa250_ble.enums import Preset, Backlight
+from hpa250b_ble.hpa250b import BTClient, BleakHPA250B
+from hpa250b_ble.const import SYSTEM_ID_UUID, COMMAND_UUID, STATE_UUID
+from hpa250b_ble.state import State
+from hpa250b_ble.enums import Preset, Backlight
 
 
 class FakeBTClient(BTClient):

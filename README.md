@@ -8,7 +8,7 @@ Controls Honeywell HPA250B device over BLE using the [Bleak](https://github.com/
 import asyncio
 
 from bleak import BleakScanner
-from hpa250_ble import BleakHPA250B, reconcile, State, Preset, Backlight
+from hpa250b_ble import BleakHPA250B, reconcile, State, Preset, Backlight
 
 
 ADDRESS = "00:00:00:00:00:00"  # your device MAC address (UUID on macOS)

@@ -1,5 +1,5 @@
 from binascii import unhexlify
-from hpa250_ble import Command
+from hpa250b_ble import Command
 
 
 def test_command():

@@ -1,5 +1,5 @@
 import pytest
-from hpa250_ble import State, Preset, Backlight, reconcile
+from hpa250b_ble import State, Preset, Backlight, reconcile
 from .virtual import VirtualHPA250B
 
 

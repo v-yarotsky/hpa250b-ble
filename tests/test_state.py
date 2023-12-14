@@ -1,5 +1,5 @@
 from binascii import unhexlify
-from hpa250_ble import State, Preset, VOCLight, Backlight
+from hpa250b_ble import State, Preset, VOCLight, Backlight
 
 
 def test_state_from_bytes():
