@@ -1,12 +1,10 @@
 import pytest
 import binascii
-from bleak.backends.device import BLEDevice
 from typing import Awaitable, Callable
 from hpa250b_ble.command import Command
 from hpa250b_ble.const import SYSTEM_ID_UUID, COMMAND_UUID, STATE_UUID
 from hpa250b_ble.enums import Preset, Backlight
-from hpa250b_ble.exc import BTClientDisconnectedError
-from hpa250b_ble.hpa250b import BTClient, HPA250B, Delegate
+from hpa250b_ble.hpa250b import BTClient, HPA250B, Delegate, BTClientDisconnectedError
 from hpa250b_ble.state import State
 
 

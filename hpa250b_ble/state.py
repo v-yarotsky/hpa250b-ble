@@ -1,5 +1,7 @@
+import binascii
 from dataclasses import dataclass, replace
 import struct
+
 from . import _LOGGER
 from .const import PREAMBLE
 from .enums import Preset, Backlight, VOCLight
@@ -11,6 +13,10 @@ from .enums import Preset, Backlight, VOCLight
 # byte 4: <pad byte>
 # byte 5: <1 byte timer spec>
 _STATE_STRUCT_FORMAT = ">BI14x"
+
+
+class StateError(Exception):
+    pass
 
 
 @dataclass(frozen=True)
@@ -30,7 +36,13 @@ class State:
         _LOGGER.debug(
             f"constructing state from {len(data)} bytes: binascii.hexlify(data)"
         )
-        _, state = struct.unpack(_STATE_STRUCT_FORMAT, data)
+
+        try:
+            _, state = struct.unpack(_STATE_STRUCT_FORMAT, data)
+        except Exception as e:
+            raise StateError(
+                f"failed to deserialize state from {binascii.hexlify(data)}"
+            ) from e
 
         is_on = _is_on_from_int(state)
 

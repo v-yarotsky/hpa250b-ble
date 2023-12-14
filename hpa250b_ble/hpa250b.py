@@ -7,11 +7,19 @@ from typing import Any, Awaitable, Callable, Protocol
 from . import _LOGGER
 from .command import Command
 from .const import SYSTEM_ID_UUID, COMMAND_UUID, STATE_UUID
-from .exc import BTClientDisconnectedError
 from .models import HPA250BModel
 from .state import State
 
 UPDATE_TIMEOUT_SECONDS = 2
+
+
+class BTError(Exception):
+    def __init__(self, message: str):
+        return super().__init__(self, message)
+
+
+class BTClientDisconnectedError(BTError):
+    pass
 
 
 class BTClient(Protocol):
@@ -46,9 +54,15 @@ class BTClient(Protocol):
 
 
 class BleakBTClient(BTClient):
-    def __init__(self, device: BLEDevice, disconnected_callback=Callable[[], None]):
+    def __init__(
+        self, device: BLEDevice, disconnected_callback=Callable[[], Awaitable[None]]
+    ):
         self._device = device
-        self._client = BleakClient(device, disconnected_callback=disconnected_callback)
+
+        def callback_fn(_: BleakClient):
+            asyncio.get_running_loop().run_until_complete(disconnected_callback())
+
+        self._client = BleakClient(device, disconnected_callback=callback_fn)
 
     @property
     def address(self) -> str:
