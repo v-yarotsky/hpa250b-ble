@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import logging
-
 from bleak import BleakScanner
 from hpa250_ble import State, BleakHPA250B, reconcile, Preset, Backlight
 

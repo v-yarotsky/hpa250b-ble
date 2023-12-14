@@ -1,6 +1,6 @@
 import struct
 from typing import cast
-from . import const
+from .const import PREAMBLE
 
 # Command structure:
 # byte 0: <preamble>
@@ -109,7 +109,7 @@ class Command:
 
     @property
     def bytes(self) -> bytes:
-        return struct.pack(_COMMAND_STRUCT_FORMAT, const.PREAMBLE, self.command)
+        return struct.pack(_COMMAND_STRUCT_FORMAT, PREAMBLE, self.command)
 
     def __eq__(self, __value: object) -> bool:
         if not isinstance(__value, Command):

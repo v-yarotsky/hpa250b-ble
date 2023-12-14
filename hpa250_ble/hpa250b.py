@@ -2,16 +2,15 @@ import asyncio
 import binascii
 from bleak.backends.device import BLEDevice
 from bleak import BleakClient
-import logging
 import struct
 from typing import Callable, Protocol
-from .models import HPA250B
-from .state import State
+from . import _LOGGER
 from .command import Command
 from .const import SYSTEM_ID_UUID, COMMAND_UUID, STATE_UUID
 from .exc import BTClientDisconnectedError
+from .models import HPA250B
+from .state import State
 
-_LOGGER = logging.getLogger(__name__)
 UPDATE_TIMEOUT_SECONDS = 2
 
 
@@ -110,7 +109,7 @@ class BleakHPA250B(HPA250B):
             _LOGGER.debug("connect: bluetooth client is already connected")
             return
 
-        _LOGGER.info("connecting")
+        _LOGGER.debug("connecting")
         self._client = client_factory(self._device, self.disconnect)
         await self._client.connect()
 
@@ -141,7 +140,7 @@ class BleakHPA250B(HPA250B):
         if not self.is_connected:
             _LOGGER.debug("disconnect: bluetooth client is already disconnected")
             return
-        _LOGGER.info("disconnecting")
+        _LOGGER.debug("disconnecting")
         await self._client.disconnect()
         self._client = DisconnectedBTClient()
         self._is_connected = False
@@ -152,7 +151,7 @@ class BleakHPA250B(HPA250B):
         return self._state
 
     async def apply_command(self, cmd: Command):
-        _LOGGER.info(f"sending command {cmd}")
+        _LOGGER.debug(f"sending command {cmd}")
         self.update_received.clear()
         await self._client.write_gatt_char(COMMAND_UUID, cmd.bytes)
         await asyncio.wait_for(
@@ -161,5 +160,5 @@ class BleakHPA250B(HPA250B):
 
     def _handle_update(self, data: bytes):
         old_state, self._state = self._state, State.from_bytes(data)
-        _LOGGER.info(f"updated state {old_state} -> {self._state}")
+        _LOGGER.debug(f"updated state {old_state} -> {self._state}")
         self.update_received.set()

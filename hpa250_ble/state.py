@@ -1,12 +1,9 @@
 from dataclasses import dataclass
-import logging
 import struct
 from typing import Optional
-
-from hpa250_ble.const import PREAMBLE
+from . import _LOGGER
+from .const import PREAMBLE
 from .enums import Preset, Backlight, VOCLight
-
-_LOGGER = logging.getLogger(__name__)
 
 # State structure:
 # byte 1: <preamble>

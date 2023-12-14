@@ -5,7 +5,6 @@ uuid16_lookup = {v: normalize_uuid_16(k) for k, v in uuid16_dict.items()}
 
 # Commonly known BLE characteristics
 SYSTEM_ID_UUID = uuid16_lookup["System ID"]
-PNP_ID_UUID = uuid16_lookup["PnP ID"]
 
 # Device-specific BLE characteristics
 COMMAND_UUID = normalize_uuid_16(0xFFE9)

@@ -1,6 +1,6 @@
 from typing import Protocol
-from .state import State
 from .command import Command
+from .state import State
 
 
 class HPA250B(Protocol):

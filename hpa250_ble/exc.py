@@ -1,5 +1,5 @@
-from hpa250_ble.models import HPA250B
-from hpa250_ble.state import State
+from .models import HPA250B
+from .state import State
 
 
 class ReconcileError(Exception):
