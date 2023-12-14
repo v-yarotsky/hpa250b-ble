@@ -2,7 +2,6 @@ from enum import Enum
 
 
 class Preset(Enum):
-    OFF = "off"
     GERM = "germ"
     GENERAL = "general"
     ALLERGEN = "allergen"
