@@ -1,14 +1,14 @@
 from .command import Command
 from .enums import Preset
 from .exc import ReconcileError
-from .models import HPA250B
+from .models import HPA250BModel
 from .state import State
 
 
 MAX_RECONCILES = 50
 
 
-async def reconcile(device: HPA250B, desired: State):
+async def reconcile(device: HPA250BModel, desired: State):
     for _ in range(MAX_RECONCILES):
         if device.current_state.matches_desired_state(desired):
             break

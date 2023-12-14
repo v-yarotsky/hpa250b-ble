@@ -1,8 +1,7 @@
 import argparse
 import asyncio
 import logging
-from bleak import BleakScanner
-from hpa250b_ble import State, BleakHPA250B, reconcile, Preset, Backlight
+from hpa250b_ble import State, HPA250B, BleakDelegate, reconcile, Preset, Backlight
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,14 +17,11 @@ async def main():
 
     args = parser.parse_args()
 
-    ble_device = await BleakScanner.find_device_by_address(args.address)
+    d = HPA250B(BleakDelegate(args.address))
 
-    logging.info(f"Found device: {ble_device}")
-    d = BleakHPA250B(ble_device)
-
-    logging.info(f"Connecting to {ble_device.name}")
+    logging.info(f"Connecting")
     await d.connect()
-    logging.info(f"Connected: {d.current_state}")
+    logging.info(f"Connected to {d.name}: {d.current_state}")
 
     desired = State(
         is_on=True,

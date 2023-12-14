@@ -5,7 +5,7 @@ alias t := test
 
 # run tests
 test PATTERN="''":
-  poetry run pytest -vv --cov=hpa250b_ble -k {{PATTERN}}
+  poetry run pytest -vv -o log_cli_level=DEBUG --cov=hpa250b_ble -k {{PATTERN}}
 
 # run test app
 run ADDRESS="890A004D-331D-7C0D-B085-253BB7FBCB5B":

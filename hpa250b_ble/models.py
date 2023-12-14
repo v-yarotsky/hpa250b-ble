@@ -3,7 +3,7 @@ from .command import Command
 from .state import State
 
 
-class HPA250B(Protocol):
+class HPA250BModel(Protocol):
     async def apply_command(self, cmd: Command):
         ...
 

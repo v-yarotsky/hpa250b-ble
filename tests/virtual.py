@@ -1,10 +1,10 @@
-from hpa250b_ble.models import HPA250B
+from hpa250b_ble.models import HPA250BModel
 from hpa250b_ble.command import Command
 from hpa250b_ble.state import State
 from hpa250b_ble.enums import Preset, Backlight, VOCLight
 
 
-class VirtualHPA250B(HPA250B):
+class VirtualHPA250B(HPA250BModel):
     _state: State
 
     def __init__(self, initial_state=State.empty()):

@@ -1,9 +1,9 @@
-from .models import HPA250B
+from .models import HPA250BModel
 from .state import State
 
 
 class ReconcileError(Exception):
-    def __init__(self, message: str, device: HPA250B, desired_state: State):
+    def __init__(self, message: str, device: HPA250BModel, desired_state: State):
         self.device_name = device.name
         self.actual_state = device.current_state
         self.desired_state = desired_state

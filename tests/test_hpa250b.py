@@ -1,22 +1,30 @@
-from hpa250b_ble.command import Command
-from hpa250b_ble.exc import BTClientDisconnectedError
 import pytest
 import binascii
 from bleak.backends.device import BLEDevice
-from typing import Callable, Optional
-from hpa250b_ble.hpa250b import BTClient, BleakHPA250B
+from typing import Awaitable, Callable
+from hpa250b_ble.command import Command
 from hpa250b_ble.const import SYSTEM_ID_UUID, COMMAND_UUID, STATE_UUID
-from hpa250b_ble.state import State
 from hpa250b_ble.enums import Preset, Backlight
+from hpa250b_ble.exc import BTClientDisconnectedError
+from hpa250b_ble.hpa250b import BTClient, HPA250B, Delegate
+from hpa250b_ble.state import State
 
 
 class FakeBTClient(BTClient):
     def __init__(self, initial_state=State.empty()):
         self._is_connected = False
-        self.notify_callback: Optional[Callable[[bytes], None]] = None
-        self.next_notification: Optional[bytes] = None
+        self.notify_callback: Callable[[bytes], Awaitable[None]] | None = None
+        self.next_notification: bytes | None = None
         self.commands: list[bytes] = []
         self.initial_state = initial_state
+
+    @property
+    def address(self) -> str:
+        return "00:01:02:03:04:05"
+
+    @property
+    def name(self) -> str:
+        return "mydevice"
 
     @property
     def is_connected(self) -> bool:
@@ -41,9 +49,11 @@ class FakeBTClient(BTClient):
 
         self.commands.append(data)
         if self.notify_callback is not None and self.next_notification is not None:
-            self.notify_callback(self.next_notification)
+            await self.notify_callback(self.next_notification)
 
-    async def start_notify(self, uuid: str, callback: Callable[[bytes], None]):
+    async def start_notify(
+        self, uuid: str, callback: Callable[[bytes], Awaitable[None]]
+    ):
         if uuid != STATE_UUID:
             raise ValueError(f"unexpected characteristic watch: {uuid}")
 
@@ -53,7 +63,18 @@ class FakeBTClient(BTClient):
         self.next_notification = data
 
 
-class TestBleakHPA250B:
+class FakeDelegate(Delegate):
+    def __init__(self, client: FakeBTClient | None):
+        self.client = client
+
+    async def make_bt_client(self, *_) -> BTClient | None:
+        return self.client
+
+    async def handle_update(self, *_):
+        pass
+
+
+class TestHPA250B:
     def setup_method(self):
         self.ble_device = BLEDevice(
             address="00:01:02:03:04:05", name="myhpa250b", details=None, rssi=90
@@ -68,10 +89,10 @@ class TestBleakHPA250B:
             voc_light=None,
             timer=None,
         )
-        d = BleakHPA250B(self.ble_device)
         c = FakeBTClient(initial_state)
+        d = HPA250B(FakeDelegate(c))
 
-        await d.connect(lambda *_: c)
+        await d.connect()
 
         assert c.commands == [b"MAC+" + binascii.unhexlify("0035FF091AC0")]
         assert d.is_connected
@@ -79,10 +100,10 @@ class TestBleakHPA250B:
 
     @pytest.mark.asyncio
     async def test_send_command(self):
-        d = BleakHPA250B(self.ble_device)
         c = FakeBTClient()
+        d = HPA250B(FakeDelegate(c))
 
-        await d.connect(lambda *_: c)
+        await d.connect()
 
         cmd = Command().toggle_power()
         c.setup_notification(
@@ -94,13 +115,13 @@ class TestBleakHPA250B:
 
     @pytest.mark.asyncio
     async def test_raises_when_sending_on_disconnected_client(self):
-        d = BleakHPA250B(self.ble_device)
+        c = FakeBTClient()
+        d = HPA250B(FakeDelegate(c))
 
         with pytest.raises(BTClientDisconnectedError):
             await d.apply_command(Command().toggle_power())
 
-        c = FakeBTClient()
-        await d.connect(lambda *_: c)
+        await d.connect()
         await d.disconnect()
 
         with pytest.raises(BTClientDisconnectedError):

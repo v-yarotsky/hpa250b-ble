@@ -1,6 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import struct
-from typing import Optional
 from . import _LOGGER
 from .const import PREAMBLE
 from .enums import Preset, Backlight, VOCLight
@@ -17,10 +16,10 @@ _STATE_STRUCT_FORMAT = ">BI14x"
 @dataclass(frozen=True)
 class State:
     is_on: bool
-    preset: Optional[Preset]
-    backlight: Optional[Backlight]
-    voc_light: Optional[VOCLight]
-    timer: Optional[int]
+    preset: Preset | None
+    backlight: Backlight | None
+    voc_light: VOCLight | None
+    timer: int | None
 
     @classmethod
     def empty(cls) -> "State":
@@ -42,7 +41,7 @@ class State:
         if preset is None:
             raise ValueError("Could not determine preset from integer state", data)
 
-        voc_light: Optional[VOCLight] = None
+        voc_light: VOCLight | None = None
         if preset in [Preset.AUTO_VOC_POLLEN, Preset.AUTO_VOC, Preset.AUTO_POLLEN]:
             voc_light = _voc_light_from_int(state)
 
@@ -70,6 +69,18 @@ class State:
             and self.timer == desired.timer
         )
 
+    def with_is_on(self, is_on: bool) -> "State":
+        return replace(self, is_on=is_on)
+
+    def with_preset(self, preset: Preset | None) -> "State":
+        return replace(self, preset=preset)
+
+    def with_backlight(self, backlight: Backlight) -> "State":
+        return replace(self, preset=backlight)
+
+    def with_timer(self, timer: int | None) -> "State":
+        return replace(self, timer=timer)
+
 
 def _is_on_from_int(n: int) -> bool:
     return bool(n & _is_on_to_int(True))
@@ -81,7 +92,7 @@ def _is_on_to_int(is_on: bool) -> int:
     return 1 << 24
 
 
-def _preset_from_int(n: int) -> Optional[Preset]:
+def _preset_from_int(n: int) -> Preset | None:
     if (n & (p := _preset_to_int(Preset.AUTO_VOC_POLLEN))) == p:
         return Preset.AUTO_VOC_POLLEN
     if (n & (p := _preset_to_int(Preset.AUTO_VOC))) == p:
@@ -100,7 +111,7 @@ def _preset_from_int(n: int) -> Optional[Preset]:
         return None
 
 
-def _preset_to_int(preset: Optional[Preset]) -> int:
+def _preset_to_int(preset: Preset | None) -> int:
     return {
         None: 0,
         Preset.GERM: 1 << 27,
@@ -122,7 +133,7 @@ def _voc_light_from_int(n: int) -> VOCLight:
     }[n]
 
 
-def _voc_light_to_int(voc_light: Optional[VOCLight]) -> int:
+def _voc_light_to_int(voc_light: VOCLight | None) -> int:
     return {
         None: 0,
         VOCLight.GREEN: 0 << 16,
@@ -140,7 +151,7 @@ def _backlight_from_int(n: int) -> Backlight:
     }[n]
 
 
-def _backlight_to_int(backlight: Optional[Backlight]) -> int:
+def _backlight_to_int(backlight: Backlight | None) -> int:
     return {
         None: 0,
         Backlight.ON: 0 << 16,
@@ -149,14 +160,14 @@ def _backlight_to_int(backlight: Optional[Backlight]) -> int:
     }[backlight]
 
 
-def _timer_from_int(n: int) -> Optional[int]:
+def _timer_from_int(n: int) -> int | None:
     value = n & 0xFF
     if value == 0:
         return None
     return value
 
 
-def _timer_to_int(timer: Optional[int]) -> int:
+def _timer_to_int(timer: int | None) -> int:
     if timer is None:
         return 0
     return timer
