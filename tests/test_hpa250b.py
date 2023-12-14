@@ -11,10 +11,15 @@ from hpa250b_ble.state import State
 
 
 class FakeBTClient(BTClient):
-    def __init__(self, initial_state=State.empty()):
+    def __init__(
+        self,
+        initial_state=State.empty(),
+        disconnect_callback: Callable[[], Awaitable[None]] | None = None,
+    ):
         self._is_connected = False
         self.notify_callback: Callable[[bytes], Awaitable[None]] | None = None
         self.next_notification: bytes | None = None
+        self.disconnect_callback = disconnect_callback
         self.commands: list[bytes] = []
         self.initial_state = initial_state
 
@@ -36,6 +41,8 @@ class FakeBTClient(BTClient):
 
     async def disconnect(self):
         self._is_connected = False
+        if self.disconnect_callback is not None:
+            await self.disconnect_callback()
 
     async def read_gatt_char(self, uuid: str) -> bytes:
         if uuid != SYSTEM_ID_UUID:
@@ -66,24 +73,16 @@ class FakeBTClient(BTClient):
 class FakeDelegate(Delegate):
     def __init__(self, client: FakeBTClient | None):
         self._client = client
-        self._disconnect_callback: Callable[[], Awaitable[None]] | None = None
 
     async def make_bt_client(
-        self, handle_disconnect: Callable[[], Awaitable[None]]
+        self, disconnect_callback: Callable[[], Awaitable[None]]
     ) -> BTClient | None:
-        self._disconnect_callback = handle_disconnect
+        if self._client is not None:
+            self._client.disconnect_callback = disconnect_callback
         return self._client
 
     async def handle_update(self, *_):
         pass
-
-    async def trigger_disconnect(self):
-        if self._disconnect_callback is None or self._client is None:
-            raise RuntimeError(
-                "Fake client is not connected, can't trigger disconnect!"
-            )
-        await self._client.disconnect()
-        await self._disconnect_callback()
 
 
 class TestHPA250B:
@@ -142,7 +141,7 @@ class TestHPA250B:
         h = HPA250B(d)
 
         await h.connect()
-        await d.trigger_disconnect()
+        await c.disconnect()
 
         assert c.commands == [
             b"MAC+" + binascii.unhexlify("0035FF091AC0"),
@@ -150,3 +149,19 @@ class TestHPA250B:
         ]
         assert h.is_connected
         assert h.current_state == initial_state
+
+    @pytest.mark.asyncio
+    async def test_does_not_reconnect_if_disconnected_intentionally(self):
+        initial_state = State.empty()
+        c = FakeBTClient(initial_state)
+        d = FakeDelegate(c)
+        h = HPA250B(d)
+
+        await h.connect()
+        await h.disconnect()
+
+        assert c.commands == [
+            b"MAC+" + binascii.unhexlify("0035FF091AC0"),
+        ]
+        assert not h.is_connected
+        assert h.current_state == State.empty()

@@ -206,7 +206,7 @@ class HPA250B(HPA250BModel):
             _LOGGER.debug("disconnect: bluetooth client is already disconnected")
             return
 
-        self._expect_connected = True
+        self._expect_connected = False
 
         _LOGGER.debug("disconnecting")
 
