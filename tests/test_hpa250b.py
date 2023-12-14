@@ -3,7 +3,7 @@ from hpa250_ble.exc import BTClientDisconnectedError
 import pytest
 import binascii
 from bleak.backends.device import BLEDevice
-from typing import Callable
+from typing import Callable, Optional
 from hpa250_ble.hpa250b import BTClient, BleakHPA250B
 from hpa250_ble.const import SYSTEM_ID_UUID, COMMAND_UUID, STATE_UUID
 from hpa250_ble.state import State
@@ -11,38 +11,46 @@ from hpa250_ble.enums import Preset, Backlight
 
 
 class FakeBTClient(BTClient):
-    def __init__(self):
+    def __init__(self, initial_state=State.empty()):
         self._is_connected = False
-        self.notify_callbacks: dict[str, Callable[[bytes], None]] = {}
+        self.notify_callback: Optional[Callable[[bytes], None]] = None
+        self.next_notification: Optional[bytes] = None
         self.commands: list[bytes] = []
+        self.initial_state = initial_state
 
     @property
     def is_connected(self) -> bool:
         return self._is_connected
 
     async def connect(self):
+        self.setup_notification(self.initial_state.bytes)
         self._is_connected = True
 
     async def disconnect(self):
         self._is_connected = False
 
     async def read_gatt_char(self, uuid: str) -> bytes:
-        if uuid == SYSTEM_ID_UUID:
-            return binascii.unhexlify("C01A090000FF3500")
-        raise ValueError(f"unexpected characteristic read: {uuid}")
+        if uuid != SYSTEM_ID_UUID:
+            raise ValueError(f"unexpected characteristic read: {uuid}")
+
+        return binascii.unhexlify("C01A090000FF3500")
 
     async def write_gatt_char(self, uuid: str, data: bytes):
-        if uuid == COMMAND_UUID:
-            self.commands.append(data)
-            return
-        raise ValueError(f"unexpected characteristic write: {uuid}")
+        if uuid != COMMAND_UUID:
+            raise ValueError(f"unexpected characteristic write: {uuid}")
+
+        self.commands.append(data)
+        if self.notify_callback is not None and self.next_notification is not None:
+            self.notify_callback(self.next_notification)
 
     async def start_notify(self, uuid: str, callback: Callable[[bytes], None]):
-        self.notify_callbacks[uuid] = callback
-        callback(State.empty().bytes)
+        if uuid != STATE_UUID:
+            raise ValueError(f"unexpected characteristic watch: {uuid}")
 
-    def notify(self, uuid: str, data: bytes):
-        self.notify_callbacks[uuid](data)
+        self.notify_callback = callback
+
+    def setup_notification(self, data: bytes):
+        self.next_notification = data
 
 
 class TestBleakHPA250B:
@@ -53,24 +61,21 @@ class TestBleakHPA250B:
 
     @pytest.mark.asyncio
     async def test_handshake(self):
-        d = BleakHPA250B(self.ble_device)
-        c = FakeBTClient()
-
-        await d.connect(lambda *_: c)
-
-        assert c.commands == [b"MAC+" + binascii.unhexlify("0035FF091AC0")]
-        assert d.is_connected
-
-        state = State(
+        initial_state = State(
             is_on=True,
             preset=Preset.GENERAL,
             backlight=Backlight.ON,
             voc_light=None,
             timer=None,
         )
-        c.notify(STATE_UUID, state.bytes)
+        d = BleakHPA250B(self.ble_device)
+        c = FakeBTClient(initial_state)
 
-        assert d.current_state == state
+        await d.connect(lambda *_: c)
+
+        assert c.commands == [b"MAC+" + binascii.unhexlify("0035FF091AC0")]
+        assert d.is_connected
+        assert d.current_state == initial_state
 
     @pytest.mark.asyncio
     async def test_send_command(self):
@@ -80,11 +85,10 @@ class TestBleakHPA250B:
         await d.connect(lambda *_: c)
 
         cmd = Command().toggle_power()
-        fut = d.apply_command(cmd)
-        c.notify(
-            STATE_UUID, State(True, Preset.GENERAL, Backlight.ON, None, None).bytes
+        c.setup_notification(
+            State(True, Preset.GENERAL, Backlight.ON, None, None).bytes
         )
-        await fut
+        await d.apply_command(cmd)
 
         assert cmd.bytes in c.commands
 
