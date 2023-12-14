@@ -12,7 +12,10 @@ from .enums import Preset, Backlight, VOCLight
 # byte 3: <6-bit voc light spec> <2 bit backlight spec>
 # byte 4: <pad byte>
 # byte 5: <1 byte timer spec>
-_STATE_STRUCT_FORMAT = ">BI14x"
+_STATE_STRUCT_PACK_FORMAT = ">BI14x"
+_STATE_STRUCT_UNPACK_FORMAT = (
+    ">BI"  # sometimes we receive state with trailing zero bytes missing
+)
 
 
 class StateError(Exception):
@@ -38,7 +41,10 @@ class State:
         )
 
         try:
-            _, state = struct.unpack(_STATE_STRUCT_FORMAT, data)
+            _, state = struct.unpack(
+                _STATE_STRUCT_UNPACK_FORMAT,
+                data[: struct.calcsize(_STATE_STRUCT_UNPACK_FORMAT)],
+            )
         except Exception as e:
             raise StateError(
                 f"failed to deserialize state from {binascii.hexlify(data)}"
@@ -71,7 +77,7 @@ class State:
         data |= _backlight_to_int(self.backlight)
         data |= _timer_to_int(self.timer)
 
-        return struct.pack(_STATE_STRUCT_FORMAT, PREAMBLE, data)
+        return struct.pack(_STATE_STRUCT_PACK_FORMAT, PREAMBLE, data)
 
     def matches_desired_state(self, desired: "State") -> bool:
         return (

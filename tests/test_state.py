@@ -74,3 +74,8 @@ def test_matches_desired_state():
     assert not State(
         True, Preset.GERM, Backlight.DIM, VOCLight.GREEN, 10
     ).matches_desired_state(State(True, Preset.GERM, Backlight.DIM, VOCLight.GREEN, 9))
+
+
+def test_buggy_state():
+    # Sometimes we receive fewer bytes
+    State.from_bytes(unhexlify("a5210600001800000000000000000000"))
