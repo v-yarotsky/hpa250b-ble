@@ -7,14 +7,21 @@ from hpa250_ble.enums import Preset, Backlight, VOCLight
 class VirtualHPA250B(HPA250B):
     _state: State
 
-    def __init__(self):
-        self._state = State.empty()
+    def __init__(self, initial_state=State.empty()):
+        self._state = initial_state
+        self._commands: list[Command] = []
 
     @property
     def name(self) -> str:
         return "VirtualHPA250B"
 
+    @property
+    def commands(self) -> list[Command]:
+        return self._commands
+
     async def apply_command(self, cmd: Command):
+        self._commands.append(cmd)
+
         is_on = self._state.is_on
         preset = self._state.preset
         backlight = self._state.backlight

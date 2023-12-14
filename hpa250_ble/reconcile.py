@@ -10,10 +10,10 @@ MAX_RECONCILES = 50
 
 async def reconcile(device: HPA250B, desired: State):
     for _ in range(MAX_RECONCILES):
-        cmd = _next_step(device.current_state, desired)
-        await device.apply_command(cmd)
         if device.current_state.matches_desired_state(desired):
             break
+        cmd = _next_step(device.current_state, desired)
+        await device.apply_command(cmd)
 
     if not device.current_state.matches_desired_state(desired):
         raise ReconcileError(

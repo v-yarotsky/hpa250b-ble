@@ -1,5 +1,5 @@
+import argparse
 import asyncio
-import platform
 import logging
 
 from bleak import BleakScanner
@@ -7,15 +7,19 @@ from hpa250_ble import State, BleakHPA250B, reconcile, Preset, Backlight
 
 logging.basicConfig(level=logging.INFO)
 
-ADDRESS = (
-    "00:35:FF:09:1A:C0"
-    if platform.system() != "Darwin"
-    else "890A004D-331D-7C0D-B085-253BB7FBCB5B"
-)
 
+async def main():
+    parser = argparse.ArgumentParser(
+        description="Example program to test HPA250B control"
+    )
 
-async def main(address: str):
-    ble_device = await BleakScanner.find_device_by_address(address)
+    parser.add_argument(
+        "--address", type=str, help="Bluetooth device address (UUID on macOS)"
+    )
+
+    args = parser.parse_args()
+
+    ble_device = await BleakScanner.find_device_by_address(args.address)
 
     logging.info(f"Found device: {ble_device}")
     d = BleakHPA250B(ble_device)
@@ -37,4 +41,4 @@ async def main(address: str):
 
 
 if __name__ == "__main__":
-    asyncio.run(main(ADDRESS))
+    asyncio.run(main())
