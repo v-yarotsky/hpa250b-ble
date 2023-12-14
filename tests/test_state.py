@@ -79,3 +79,18 @@ def test_matches_desired_state():
 def test_buggy_state():
     # Sometimes we receive fewer bytes
     State.from_bytes(unhexlify("a5210600001800000000000000000000"))
+
+
+def test_produces_valid_state():
+    assert State.empty().with_preset(Preset.GERM) == State.empty()
+    assert State.empty().with_backlight(Backlight.DIM) == State.empty()
+    assert State.empty().with_timer(1) == State.empty()
+
+    assert State.empty().with_is_on(True) == State(
+        True, Preset.GENERAL, Backlight.ON, None, None
+    )
+
+    assert (
+        State.empty().with_is_on(True).with_preset(Preset.GERM).with_is_on(False)
+        == State.empty()
+    )

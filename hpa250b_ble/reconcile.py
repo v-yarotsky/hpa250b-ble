@@ -2,6 +2,7 @@ from .command import Command
 from .enums import Preset
 from .models import HPA250BModel
 from .state import State
+from . import _LOGGER
 
 
 MAX_RECONCILES = 50
@@ -25,10 +26,15 @@ class ReconcileError(Exception):
 
 
 async def reconcile(device: HPA250BModel, desired: State):
-    for _ in range(MAX_RECONCILES):
+    _LOGGER.debug(
+        f"Reconciling state; current: {device.current_state}, target: {desired}"
+    )
+    for i in range(MAX_RECONCILES):
         if device.current_state.matches_desired_state(desired):
+            _LOGGER.debug("Reconciliation finished")
             break
         cmd = _next_step(device.current_state, desired)
+        _LOGGER.debug(f"Reconcile step {i}")
         await device.apply_command(cmd)
 
     if not device.current_state.matches_desired_state(desired):

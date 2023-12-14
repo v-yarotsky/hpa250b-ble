@@ -30,6 +30,20 @@ class State:
     voc_light: VOCLight | None
     timer: int | None
 
+    def __post_init__(self):
+        if not self.is_on:
+            object.__setattr__(self, "preset", None)
+            object.__setattr__(self, "backlight", None)
+            object.__setattr__(self, "voc_light", None)
+            object.__setattr__(self, "timer", None)
+            return
+
+        if self.preset is None:
+            object.__setattr__(self, "preset", Preset.GENERAL)
+
+        if self.backlight is None:
+            object.__setattr__(self, "backlight", Backlight.ON)
+
     @classmethod
     def empty(cls) -> "State":
         return State(False, None, None, None, None)
@@ -90,7 +104,7 @@ class State:
     def with_is_on(self, is_on: bool) -> "State":
         return replace(self, is_on=is_on)
 
-    def with_preset(self, preset: Preset | None) -> "State":
+    def with_preset(self, preset: Preset) -> "State":
         return replace(self, preset=preset)
 
     def with_backlight(self, backlight: Backlight) -> "State":
