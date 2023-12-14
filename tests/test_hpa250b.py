@@ -65,21 +65,28 @@ class FakeBTClient(BTClient):
 
 class FakeDelegate(Delegate):
     def __init__(self, client: FakeBTClient | None):
-        self.client = client
+        self._client = client
+        self._disconnect_callback: Callable[[], Awaitable[None]] | None = None
 
-    async def make_bt_client(self, *_) -> BTClient | None:
-        return self.client
+    async def make_bt_client(
+        self, handle_disconnect: Callable[[], Awaitable[None]]
+    ) -> BTClient | None:
+        self._disconnect_callback = handle_disconnect
+        return self._client
 
     async def handle_update(self, *_):
         pass
 
+    async def trigger_disconnect(self):
+        if self._disconnect_callback is None or self._client is None:
+            raise RuntimeError(
+                "Fake client is not connected, can't trigger disconnect!"
+            )
+        await self._client.disconnect()
+        await self._disconnect_callback()
+
 
 class TestHPA250B:
-    def setup_method(self):
-        self.ble_device = BLEDevice(
-            address="00:01:02:03:04:05", name="myhpa250b", details=None, rssi=90
-        )
-
     @pytest.mark.asyncio
     async def test_handshake(self):
         initial_state = State(
@@ -90,39 +97,56 @@ class TestHPA250B:
             timer=None,
         )
         c = FakeBTClient(initial_state)
-        d = HPA250B(FakeDelegate(c))
+        h = HPA250B(FakeDelegate(c))
 
-        await d.connect()
+        await h.connect()
 
         assert c.commands == [b"MAC+" + binascii.unhexlify("0035FF091AC0")]
-        assert d.is_connected
-        assert d.current_state == initial_state
+        assert h.is_connected
+        assert h.current_state == initial_state
 
     @pytest.mark.asyncio
     async def test_send_command(self):
         c = FakeBTClient()
-        d = HPA250B(FakeDelegate(c))
+        h = HPA250B(FakeDelegate(c))
 
-        await d.connect()
+        await h.connect()
 
         cmd = Command().toggle_power()
         c.setup_notification(
             State(True, Preset.GENERAL, Backlight.ON, None, None).bytes
         )
-        await d.apply_command(cmd)
+        await h.apply_command(cmd)
 
         assert cmd.bytes in c.commands
 
     @pytest.mark.asyncio
     async def test_raises_when_sending_on_disconnected_client(self):
         c = FakeBTClient()
-        d = HPA250B(FakeDelegate(c))
+        h = HPA250B(FakeDelegate(c))
 
         with pytest.raises(BTClientDisconnectedError):
-            await d.apply_command(Command().toggle_power())
+            await h.apply_command(Command().toggle_power())
 
-        await d.connect()
-        await d.disconnect()
+        await h.connect()
+        await h.disconnect()
 
         with pytest.raises(BTClientDisconnectedError):
-            await d.apply_command(Command().toggle_power())
+            await h.apply_command(Command().toggle_power())
+
+    @pytest.mark.asyncio
+    async def test_reconnect(self):
+        initial_state = State.empty()
+        c = FakeBTClient(initial_state)
+        d = FakeDelegate(c)
+        h = HPA250B(d)
+
+        await h.connect()
+        await d.trigger_disconnect()
+
+        assert c.commands == [
+            b"MAC+" + binascii.unhexlify("0035FF091AC0"),
+            b"MAC+" + binascii.unhexlify("0035FF091AC0"),
+        ]
+        assert h.is_connected
+        assert h.current_state == initial_state
